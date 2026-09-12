@@ -66,9 +66,10 @@ class SceneModel
 	// character position in the world (z-up)
 	Cartesian3 characterPosition;
 
-	// the ball's surface model & position in the world (z-up)
+	// the ball's surface model, position & velocity in the world (z-up)
 	IndexedFaceSurface ballModel;
 	Cartesian3 ballPosition;
+	Cartesian3 ballVelocity;
 	
 	// constructor
 	SceneModel();

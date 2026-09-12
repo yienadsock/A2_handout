@@ -40,6 +40,11 @@ const float characterSpeed	= 4.0f;		// forward run speed (m/s)
 const float blendDuration	= 0.5f;		// rest <-> run blend time (seconds)
 const float boneRadius		= 2.0f;		// bone cylinder radius, in skeletal units
 
+// ball physics
+const float gravity		= 9.8f;		// m/s^2
+const float elasticity	= 0.6f;		// bounce restitution
+const float ballRadius	= 1.0f;		// world units (metres)
+
 const Homogeneous4 sunDirection(0.5, -0.5, 0.3, 0.0);
 const GLfloat groundColour[4] = { 0.2, 0.5, 0.2, 1.0 };
 const GLfloat ballColour[4] = { 0.6, 0.6, 0.6, 1.0 };
@@ -115,6 +120,17 @@ void SceneModel::Update()
 
 	// follow the terrain height
 	characterPosition.z = activeLandModel->getHeight(characterPosition.x, characterPosition.y);
+
+	// ball: gravity & terrain collision
+	ballVelocity.z -= gravity * frameTime;
+	ballPosition = ballPosition + ballVelocity * frameTime;
+	float groundHeight = activeLandModel->getHeight(ballPosition.x, ballPosition.y);
+	if (ballPosition.z - groundHeight < ballRadius)
+		{ // bounces off the ground
+		ballPosition.z = groundHeight + ballRadius;
+		if (ballVelocity.z < 0.0f)
+			ballVelocity.z = -ballVelocity.z * elasticity;
+		} // bounces off the ground
 	} // Update()
 
 // routine to tell the scene to render itself
@@ -329,6 +345,7 @@ void SceneModel::ResetPhysics()
 
 	// drop the ball from 10 m
 	ballPosition = Cartesian3(0.0, 0.0, 10.0);
+	ballVelocity = Cartesian3(0.0, 0.0, 0.0);
 	} // ResetPhysics()
 	
 // routine to switch between flat land and rolling land
