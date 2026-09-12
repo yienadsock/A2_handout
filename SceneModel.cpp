@@ -78,6 +78,9 @@ SceneModel::SceneModel()
 	// and set the frame number to 0
 	frameNumber = 0;
 		
+	// start the animation clock
+	animationTime = 0.0f;
+
 	// the bone quadric is created on the first render
 	boneQuadric = NULL;
 
@@ -88,7 +91,8 @@ SceneModel::SceneModel()
 // routine that updates the scene for the next frame
 void SceneModel::Update()
 	{ // Update()
-
+	// advance the animation clock
+	animationTime += frameTime;
 	} // Update()
 
 // routine to tell the scene to render itself
@@ -164,21 +168,32 @@ void SceneModel::RenderCharacter()
 	// skeletal units to metres
 	glScalef(characterScale, characterScale, characterScale);
 
-	// draw the hierarchy from the root joint
-	RenderJoint(standPose.root);
+	// current frame of the run cycle
+	if (!runCycle.boneRotations.empty() && runCycle.frame_time > 0.0f)
+		{ // has animation data
+		size_t frame = ((size_t) (animationTime / runCycle.frame_time)) % runCycle.boneRotations.size();
+
+		// render that pose
+		RenderJoint(runCycle.root, runCycle.boneRotations[frame]);
+		} // has animation data
 
 	glPopMatrix();
 	} // RenderCharacter()
 
 // recursively draw a joint and the bones to its children
-void SceneModel::RenderJoint(const Joint &joint)
+void SceneModel::RenderJoint(const Joint &joint, const std::vector<Cartesian3> &rotations)
 	{ // RenderJoint()
 	glPushMatrix();
 
 	// move to the joint's offset from its parent
 	glTranslatef(joint.joint_offset[0], joint.joint_offset[1], joint.joint_offset[2]);
 
-	// (Task Ib will apply the animation rotation here)
+	// apply the joint's rotation
+	// (rotating X then Y then Z gives RX * RY * RZ, as pdf specifies)
+	const Cartesian3 &angles = rotations[joint.id];
+	glRotatef(angles.x, 1.0f, 0.0f, 0.0f);
+	glRotatef(angles.y, 0.0f, 1.0f, 0.0f);
+	glRotatef(angles.z, 0.0f, 0.0f, 1.0f);
 
 	// draw a bone to each child, then recurse
 	for (int child = 0; child < (int) joint.Children.size(); child++)
@@ -186,7 +201,7 @@ void SceneModel::RenderJoint(const Joint &joint)
 		DrawBone(Cartesian3(	joint.Children[child].joint_offset[0],
 								joint.Children[child].joint_offset[1],
 								joint.Children[child].joint_offset[2]));
-		RenderJoint(joint.Children[child]);
+		RenderJoint(joint.Children[child], rotations);
 		} // per child
 
 	glPopMatrix();

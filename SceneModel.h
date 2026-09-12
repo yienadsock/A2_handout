@@ -49,6 +49,9 @@ class SceneModel
 	// the frame number for use in animating
 	unsigned long frameNumber;
 
+	// the character's animation clock (seconds)
+	float animationTime;
+
 	// character animation data: rest pose & run cycle
 	BVHData standPose;
 	BVHData runCycle;
@@ -91,8 +94,8 @@ class SceneModel
 	void RenderCharacter();
 
 	private:
-	// recursively draw a joint and the bones to its children
-	void RenderJoint(const Joint &joint);
+	// recursively draw a joint and its child bones in the given pose
+	void RenderJoint(const Joint &joint, const std::vector<Cartesian3> &rotations);
 
 	// draw one bone as a cylinder from the origin to the given offset
 	void DrawBone(const Cartesian3 &offset);
