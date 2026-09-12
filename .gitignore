@@ -1,0 +1,8 @@
+.qmake.stash
+A2_handout.pro
+A2.txt
+Makefile
+Makefile.Debug
+Makefile.Release
+/release
+/debug
