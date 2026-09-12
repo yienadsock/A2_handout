@@ -53,6 +53,9 @@ class SceneModel
 	// the standing (rest) pose and the running cycle
 	BVHData standPose;
 	BVHData runCycle;
+
+	// the character's position in the world (z-up)
+	Cartesian3 characterPosition;
 	
 	// constructor
 	SceneModel();
@@ -84,6 +87,19 @@ class SceneModel
 	
 	// and to rotate to right
 	void RotateLaunchRight();
+
+	// routine to render the character's skeleton
+	void RenderCharacter();
+
+	private:
+	// routine to recursively render a joint and the bones leading to its children
+	void RenderJoint(const Joint &joint);
+
+	// routine to render a single bone as a cylinder from the origin to the given offset
+	void DrawBone(const Cartesian3 &offset);
+
+	// the quadric used to draw the bone cylinders (created on the first render)
+	GLUquadric *boneQuadric;
 	}; // class SceneModel
 
 #endif

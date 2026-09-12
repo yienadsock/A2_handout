@@ -33,6 +33,11 @@ const float cameraSpeed = 5.0;
 // this is 60 fps nominal speed
 const float frameTime = 0.0166667;	
 
+// character configuration
+const float characterScale	= 0.01f;	// the BVH skeleton is in roughly centimetre units, world units are metres
+const float characterYaw	= 90.0f;	// degrees around the world z axis, so that the character faces right across the screen
+const float boneRadius		= 2.0f;		// radius of the bone cylinders, in skeletal units
+
 const Homogeneous4 sunDirection(0.5, -0.5, 0.3, 0.0);
 const GLfloat groundColour[4] = { 0.2, 0.5, 0.2, 1.0 };
 const GLfloat ballColour[4] = { 0.6, 0.6, 0.6, 1.0 };
@@ -73,6 +78,9 @@ SceneModel::SceneModel()
 	// and set the frame number to 0
 	frameNumber = 0;
 		
+	// the quadric used for the bone cylinders is created the first time we render
+	boneQuadric = NULL;
+
 	// call the reset routine to initialise the ball position
 	ResetPhysics();
 	} // constructor
@@ -128,7 +136,102 @@ void SceneModel::Render()
 	// render the terrain
     activeLandModel->Render();
 
+	// render the character's skeleton on top of it
+	RenderCharacter();
+
     } // Render()
+
+// routine to render the character's skeleton
+void SceneModel::RenderCharacter()
+	{ // RenderCharacter()
+	// draw the character in its own colour
+	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, characterColour);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, blackColour);
+	glMaterialfv(GL_FRONT, GL_EMISSION, blackColour);
+
+	// build the transform from skeletal space into world space
+	glPushMatrix();
+
+	// move the character to its position in the world
+	glTranslatef(characterPosition.x, characterPosition.y, characterPosition.z);
+
+	// yaw the character so that it faces right across the screen
+	glRotatef(characterYaw, 0.0f, 0.0f, 1.0f);
+
+	// the world is z-up, but the BVH skeleton is y-up - stand the character upright
+	glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+
+	// scale the skeleton from skeletal units into world units
+	glScalef(characterScale, characterScale, characterScale);
+
+	// render the hierarchy, starting from the root joint
+	RenderJoint(standPose.root);
+
+	glPopMatrix();
+	} // RenderCharacter()
+
+// routine to recursively render a joint and the bones leading to its children
+void SceneModel::RenderJoint(const Joint &joint)
+	{ // RenderJoint()
+	glPushMatrix();
+
+	// move to this joint's position relative to its parent
+	glTranslatef(joint.joint_offset[0], joint.joint_offset[1], joint.joint_offset[2]);
+
+	// (Task Ib will add the joint's animated rotation here)
+
+	// draw a bone to each child joint, then recurse down the hierarchy
+	for (int child = 0; child < (int) joint.Children.size(); child++)
+		{ // per child
+		DrawBone(Cartesian3(	joint.Children[child].joint_offset[0],
+								joint.Children[child].joint_offset[1],
+								joint.Children[child].joint_offset[2]));
+		RenderJoint(joint.Children[child]);
+		} // per child
+
+	glPopMatrix();
+	} // RenderJoint()
+
+// routine to render a single bone as a cylinder from the origin to the given offset
+void SceneModel::DrawBone(const Cartesian3 &offset)
+	{ // DrawBone()
+	// work out the length of the bone and ignore degenerate bones
+	float length = offset.length();
+	if (length < 1e-6f)
+		return;
+
+	// create the quadric used for the cylinders the first time we draw a bone
+	if (boneQuadric == NULL)
+		{ // create quadric
+		boneQuadric = gluNewQuadric();
+		gluQuadricDrawStyle(boneQuadric, GLU_FILL);
+		gluQuadricNormals(boneQuadric, GLU_SMOOTH);
+		} // create quadric
+
+	// a cylinder is generated along the +z axis, so work out the rotation that aligns it with the bone
+	Cartesian3 direction = offset / length;
+	Cartesian3 axis = Cartesian3(0.0f, 0.0f, 1.0f).cross(direction);
+	float sinAngle = axis.length();
+	float cosAngle = direction.z;
+
+	glPushMatrix();
+	if (sinAngle < 1e-6f)
+		{ // bone is parallel to the z axis
+		// if it points backwards, flip the cylinder over, otherwise leave it alone
+		if (cosAngle < 0.0f)
+			glRotatef(180.0f, 1.0f, 0.0f, 0.0f);
+		} // bone is parallel to the z axis
+	else
+		{ // general case
+		float angle = atan2(sinAngle, cosAngle) * 180.0f / M_PI;
+		glRotatef(angle, axis.x, axis.y, axis.z);
+		} // general case
+
+	// draw the shaft of the bone
+	gluCylinder(boneQuadric, boneRadius, boneRadius, length, 8, 1);
+
+	glPopMatrix();
+	} // DrawBone()
 
 // character control events: W for forward
 void SceneModel::EventCharacterForward()
