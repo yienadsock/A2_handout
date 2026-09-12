@@ -30,6 +30,7 @@
 #include "Terrain.h"
 #include "Matrix4.h"
 #include "Quaternion.h"
+#include "BVHData.h"
 
 class SceneModel										
 	{ // class SceneModel
@@ -47,6 +48,11 @@ class SceneModel
 
 	// the frame number for use in animating
 	unsigned long frameNumber;
+
+	// the character's BVH animation data:
+	// the standing (rest) pose and the running cycle
+	BVHData standPose;
+	BVHData runCycle;
 	
 	// constructor
 	SceneModel();

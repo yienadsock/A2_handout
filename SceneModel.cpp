@@ -50,6 +50,20 @@ SceneModel::SceneModel()
     stripeLandModel.ReadFileTerrainData(stripeLandModelName, 3);
     rollingLandModel.ReadFileTerrainData(rollingLandModelName, 3);
 
+	// load the character's BVH animation data
+	if (!standPose.ReadFileBVH(motionBvhStand))
+		std::cout << "Failed to load " << motionBvhStand << std::endl;
+	if (!runCycle.ReadFileBVH(motionBvhRun))
+		std::cout << "Failed to load " << motionBvhRun << std::endl;
+
+	// sanity check for debugging - report what was loaded
+	std::cout << "Loaded " << motionBvhStand << ": "
+		<< standPose.all_joints.size() << " joints, "
+		<< standPose.frame_count << " frames" << std::endl;
+	std::cout << "Loaded " << motionBvhRun << ": "
+		<< runCycle.all_joints.size() << " joints, "
+		<< runCycle.frame_count << " frames" << std::endl;
+
 	// set the reference for the terrain model to use
     this->activeLandModel = &flatLandModel;
 	
