@@ -65,6 +65,10 @@ class SceneModel
 
 	// character position in the world (z-up)
 	Cartesian3 characterPosition;
+
+	// the ball's surface model & position in the world (z-up)
+	IndexedFaceSurface ballModel;
+	Cartesian3 ballPosition;
 	
 	// constructor
 	SceneModel();
@@ -102,6 +106,9 @@ class SceneModel
 
 	// render the character's skeleton
 	void RenderCharacter();
+
+	// render the ball
+	void RenderBall();
 
 	private:
 	// recursively draw a joint and its child bones in the given pose

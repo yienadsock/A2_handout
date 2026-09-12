@@ -57,6 +57,10 @@ SceneModel::SceneModel()
     stripeLandModel.ReadFileTerrainData(stripeLandModelName, 3);
     rollingLandModel.ReadFileTerrainData(rollingLandModelName, 3);
 
+	// load the ball model
+	if (!ballModel.ReadFileIndexedFace(sphereModelName))
+		std::cout << "Failed to load " << sphereModelName << std::endl;
+
 	// load the character's animation data
 	if (!standPose.ReadFileBVH(motionBvhStand))
 		std::cout << "Failed to load " << motionBvhStand << std::endl;
@@ -158,10 +162,28 @@ void SceneModel::Render()
 	// render the terrain
     activeLandModel->Render();
 
+	// render the ball
+	RenderBall();
+
 	// render the character
 	RenderCharacter();
 
     } // Render()
+
+// render the ball
+void SceneModel::RenderBall()
+	{ 
+	//ball's material
+	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, ballColour);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, blackColour);
+	glMaterialfv(GL_FRONT, GL_EMISSION, blackColour);
+
+	// move the model to the ball's position
+	glPushMatrix();
+	glTranslatef(ballPosition.x, ballPosition.y, ballPosition.z);
+	ballModel.Render();
+	glPopMatrix();
+	} 
 
 // render the character's skeleton
 void SceneModel::RenderCharacter()
@@ -304,6 +326,9 @@ void SceneModel::ResetGame()
 void SceneModel::ResetPhysics()
 	{ // ResetPhysics()
 	std::cout << "Resetting Physics." << std::endl;
+
+	// drop the ball from 10 m
+	ballPosition = Cartesian3(0.0, 0.0, 10.0);
 	} // ResetPhysics()
 	
 // routine to switch between flat land and rolling land
