@@ -97,7 +97,9 @@ void AnimationCycleWidget::keyPressEvent(QKeyEvent *event)
 			theScene->EventCharacterBackward();
 			break;
 		case Qt::Key_Space:
-			theScene->ResetGame();
+			if (event->isAutoRepeat())
+				break;
+			theScene->ToggleRunning();
 			break;
 		case Qt::Key_L:
 			theScene->SwitchLand();

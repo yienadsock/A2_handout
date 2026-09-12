@@ -52,6 +52,13 @@ class SceneModel
 	// the character's animation clock (seconds)
 	float animationTime;
 
+	// start/stop request & blend between rest (0) and run (1)
+	bool runningTarget;
+	float blendWeight;
+
+	// store pose for blending rest & run
+	std::vector<Cartesian3> blendedPose;
+
 	// character animation data: rest pose & run cycle
 	BVHData standPose;
 	BVHData runCycle;
@@ -71,6 +78,9 @@ class SceneModel
 	// character control events: WASD
 	void EventCharacterForward();
 	void EventCharacterBackward();
+
+	// start or stop the character running
+	void ToggleRunning();
 	
 	// reset game
 	void ResetGame();

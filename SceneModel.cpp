@@ -37,6 +37,7 @@ const float frameTime = 0.0166667;
 const float characterScale	= 0.01f;	// skeletal units (cm) to world metres
 const float characterYaw	= 90.0f;	// the character faces screen-right
 const float characterSpeed	= 4.0f;		// forward run speed (m/s)
+const float blendDuration	= 0.5f;		// rest <-> run blend time (seconds)
 const float boneRadius		= 2.0f;		// bone cylinder radius, in skeletal units
 
 const Homogeneous4 sunDirection(0.5, -0.5, 0.3, 0.0);
@@ -82,6 +83,11 @@ SceneModel::SceneModel()
 	// start the animation clock
 	animationTime = 0.0f;
 
+	// start in the rest pose
+	runningTarget = false;
+	blendWeight = 0.0f;
+	blendedPose.resize(standPose.boneRotations[0].size());
+
 	// the bone quadric is created on the first render
 	boneQuadric = NULL;
 
@@ -95,8 +101,13 @@ void SceneModel::Update()
 	// advance the animation clock
 	animationTime += frameTime;
 
-	// run forward (the character faces +x)
-	characterPosition.x += characterSpeed * frameTime;
+	// blend between rest & run
+	blendWeight += (runningTarget ? frameTime : -frameTime) / blendDuration;
+	if (blendWeight < 0.0f) blendWeight = 0.0f;
+	if (blendWeight > 1.0f) blendWeight = 1.0f;
+
+	// run forward (the character faces +x), eased by the blend
+	characterPosition.x += characterSpeed * blendWeight * frameTime;
 
 	// follow the terrain height
 	characterPosition.z = activeLandModel->getHeight(characterPosition.x, characterPosition.y);
@@ -179,9 +190,20 @@ void SceneModel::RenderCharacter()
 	if (!runCycle.boneRotations.empty() && runCycle.frame_time > 0.0f)
 		{ // has animation data
 		size_t frame = ((size_t) (animationTime / runCycle.frame_time)) % runCycle.boneRotations.size();
+		const std::vector<Cartesian3> &runPose = runCycle.boneRotations[frame];
 
-		// render that pose
-		RenderJoint(runCycle.root, runCycle.boneRotations[frame]);
+		// draw the rest pose, the run pose, or a blend of the two
+		if (blendWeight <= 0.0f)
+			RenderJoint(runCycle.root, standPose.boneRotations[0]);
+		else if (blendWeight >= 1.0f)
+			RenderJoint(runCycle.root, runPose);
+		else
+			{ // blend the poses
+			const std::vector<Cartesian3> &restPose = standPose.boneRotations[0];
+			for (size_t joint = 0; joint < runPose.size(); joint++)
+				blendedPose[joint] = restPose[joint] + (runPose[joint] - restPose[joint]) * blendWeight;
+			RenderJoint(runCycle.root, blendedPose);
+			} // blend the poses
 		} // has animation data
 
 	glPopMatrix();
@@ -266,6 +288,12 @@ void SceneModel::EventCharacterBackward()
     { // EventCharacterBackward()
 
     } // EventCharacterBackward()
+
+// start or stop the character running
+void SceneModel::ToggleRunning()
+	{ // ToggleRunning()
+	runningTarget = !runningTarget;
+	} // ToggleRunning()
 
 void SceneModel::ResetGame()
     { // ResetGame()
