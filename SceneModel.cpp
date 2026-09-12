@@ -36,6 +36,7 @@ const float frameTime = 0.0166667;
 // character configuration
 const float characterScale	= 0.01f;	// skeletal units (cm) to world metres
 const float characterYaw	= 90.0f;	// the character faces screen-right
+const float characterSpeed	= 4.0f;		// forward run speed (m/s)
 const float boneRadius		= 2.0f;		// bone cylinder radius, in skeletal units
 
 const Homogeneous4 sunDirection(0.5, -0.5, 0.3, 0.0);
@@ -93,6 +94,12 @@ void SceneModel::Update()
 	{ // Update()
 	// advance the animation clock
 	animationTime += frameTime;
+
+	// run forward (the character faces +x)
+	characterPosition.x += characterSpeed * frameTime;
+
+	// follow the terrain height
+	characterPosition.z = activeLandModel->getHeight(characterPosition.x, characterPosition.y);
 	} // Update()
 
 // routine to tell the scene to render itself

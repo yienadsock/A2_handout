@@ -145,11 +145,19 @@ float Terrain::getHeight(float x, float y)
 	// we need to flip coordinates vertically because the rows start at the top
 	y = totalHeight - y;
 
-	// now divide by the x-y scale to get the index 
+	// Corrected version 17/12/2025:
+	//
+	// We have now converted the point to coordinates from the top left of the terrain, so y runs downwards
+	//
+	// Given a point P in a unit grid, we take the remainder (i.e. the fractional part) in x, y to get the 
+	// coordinates within the square of the grid.  Then we compare them to see whether we are in the upper
+	// right triangle or the lower left.
+
+	// divide by the x-y scale to get the index 
 	long x_integer	=	x / xyScale;
 	long y_integer 	= 	y / xyScale;
 
-	// now work out the fractional parts
+	// work out the fractional parts
 	float x_remainder	=	(float)(x - (xyScale * x_integer))/xyScale;
 	float y_remainder	=	(float)(y - (xyScale * y_integer))/xyScale;
 
@@ -163,11 +171,21 @@ float Terrain::getHeight(float x, float y)
 		{ // LL triangle
 		// in theory, we want barycentric interpolation, but fortunately, it collapses for us because we have 
 		// right triangles.  
-		// y_remainder is alpha, the barycentric coordinate for the UL corner
-		// (1.0 - y_remainder) * x_remainder is beta, the barycentric coordinate for the LR corner
-		// (1.0 - y_remainder) * (1.0 - x_remainder) is gamma, the barycentric coordinate for the LL corner
-		float alpha = y_remainder;
-		float beta = (1.0 - y_remainder) * x_remainder;
+		// Given the triangle ABC and point P
+		//
+		//   A
+		//   |\
+		//   | \
+		//   |  \
+		//   | P \
+		//   |    \
+		//   C-----B		
+		// the x_remainder from P is the horizontal distance - i.e. the distance from AC - so it is beta
+		// the y_remainder is the distance downwards from A - i.e. 1 - alpha
+		// gamma is then easy to compute
+
+		float alpha = 1.0 - y_remainder;
+		float beta = x_remainder;
 		float gamma = 1.0 - alpha - beta;
 		
 		// compute and return
@@ -175,11 +193,21 @@ float Terrain::getHeight(float x, float y)
 		} // LL triangle
 	else
 		{ // UR triangle
-		// (1.0 - x_remainder) is alpha, the barycentric coordinate for the UL corner
-		// x_remainder * y_remainder is beta, the barycentric coordinate for the LR corner
-		// x_remainder * (1.0 - y_remainder) is gamma, the barycentric coordinate for the UR corner
-		float alpha = 1.0 - y_remainder;
-		float beta = x_remainder * y_remainder;
+		// Given the triangle ABC and point P
+		//
+		//   A-----C
+		//    \    |
+		//     \ P |
+		//      \  |
+		//       \ |
+		//        \|
+		//         B		
+		// the x_remainder from P is the horizontal distance - i.e. 1 - alpha
+		// the y_remainder is the distance downwards from A - i.e. beta
+		// gamma is then easy to compute
+
+		float alpha = 1 - x_remainder;
+		float beta = y_remainder;
 		float gamma = 1.0 - alpha - beta;
 		
 		// compute and return
@@ -248,4 +276,3 @@ Cartesian3 Terrain::getNormal(float x, float y)
 		} // UR triangle
 
 	} // getNormal()	
-
