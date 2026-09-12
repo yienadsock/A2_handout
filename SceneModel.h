@@ -49,12 +49,11 @@ class SceneModel
 	// the frame number for use in animating
 	unsigned long frameNumber;
 
-	// the character's BVH animation data:
-	// the standing (rest) pose and the running cycle
+	// character animation data: rest pose & run cycle
 	BVHData standPose;
 	BVHData runCycle;
 
-	// the character's position in the world (z-up)
+	// character position in the world (z-up)
 	Cartesian3 characterPosition;
 	
 	// constructor
@@ -88,17 +87,17 @@ class SceneModel
 	// and to rotate to right
 	void RotateLaunchRight();
 
-	// routine to render the character's skeleton
+	// render the character's skeleton
 	void RenderCharacter();
 
 	private:
-	// routine to recursively render a joint and the bones leading to its children
+	// recursively draw a joint and the bones to its children
 	void RenderJoint(const Joint &joint);
 
-	// routine to render a single bone as a cylinder from the origin to the given offset
+	// draw one bone as a cylinder from the origin to the given offset
 	void DrawBone(const Cartesian3 &offset);
 
-	// the quadric used to draw the bone cylinders (created on the first render)
+	// quadric used for the bone cylinders (created on first render)
 	GLUquadric *boneQuadric;
 	}; // class SceneModel
 

@@ -34,9 +34,9 @@ const float cameraSpeed = 5.0;
 const float frameTime = 0.0166667;	
 
 // character configuration
-const float characterScale	= 0.01f;	// the BVH skeleton is in roughly centimetre units, world units are metres
-const float characterYaw	= 90.0f;	// degrees around the world z axis, so that the character faces right across the screen
-const float boneRadius		= 2.0f;		// radius of the bone cylinders, in skeletal units
+const float characterScale	= 0.01f;	// skeletal units (cm) to world metres
+const float characterYaw	= 90.0f;	// the character faces screen-right
+const float boneRadius		= 2.0f;		// bone cylinder radius, in skeletal units
 
 const Homogeneous4 sunDirection(0.5, -0.5, 0.3, 0.0);
 const GLfloat groundColour[4] = { 0.2, 0.5, 0.2, 1.0 };
@@ -55,13 +55,13 @@ SceneModel::SceneModel()
     stripeLandModel.ReadFileTerrainData(stripeLandModelName, 3);
     rollingLandModel.ReadFileTerrainData(rollingLandModelName, 3);
 
-	// load the character's BVH animation data
+	// load the character's animation data
 	if (!standPose.ReadFileBVH(motionBvhStand))
 		std::cout << "Failed to load " << motionBvhStand << std::endl;
 	if (!runCycle.ReadFileBVH(motionBvhRun))
 		std::cout << "Failed to load " << motionBvhRun << std::endl;
 
-	// sanity check for debugging - report what was loaded
+	// report what was loaded
 	std::cout << "Loaded " << motionBvhStand << ": "
 		<< standPose.all_joints.size() << " joints, "
 		<< standPose.frame_count << " frames" << std::endl;
@@ -78,7 +78,7 @@ SceneModel::SceneModel()
 	// and set the frame number to 0
 	frameNumber = 0;
 		
-	// the quadric used for the bone cylinders is created the first time we render
+	// the bone quadric is created on the first render
 	boneQuadric = NULL;
 
 	// call the reset routine to initialise the ball position
@@ -136,51 +136,51 @@ void SceneModel::Render()
 	// render the terrain
     activeLandModel->Render();
 
-	// render the character's skeleton on top of it
+	// render the character
 	RenderCharacter();
 
     } // Render()
 
-// routine to render the character's skeleton
+// render the character's skeleton
 void SceneModel::RenderCharacter()
 	{ // RenderCharacter()
-	// draw the character in its own colour
+	// set the character's material
 	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, characterColour);
 	glMaterialfv(GL_FRONT, GL_SPECULAR, blackColour);
 	glMaterialfv(GL_FRONT, GL_EMISSION, blackColour);
 
-	// build the transform from skeletal space into world space
+	// transform skeletal space into world space
 	glPushMatrix();
 
-	// move the character to its position in the world
+	// world position
 	glTranslatef(characterPosition.x, characterPosition.y, characterPosition.z);
 
-	// yaw the character so that it faces right across the screen
+	// face screen-right
 	glRotatef(characterYaw, 0.0f, 0.0f, 1.0f);
 
-	// the world is z-up, but the BVH skeleton is y-up - stand the character upright
+	// BVH is y-up, world is z-up
 	glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
 
-	// scale the skeleton from skeletal units into world units
+	// skeletal units to metres
 	glScalef(characterScale, characterScale, characterScale);
 
-	// render the hierarchy, starting from the root joint
+	// draw the hierarchy from the root joint
 	RenderJoint(standPose.root);
 
 	glPopMatrix();
 	} // RenderCharacter()
 
-// routine to recursively render a joint and the bones leading to its children
+// recursively draw a joint and the bones to its children
 void SceneModel::RenderJoint(const Joint &joint)
 	{ // RenderJoint()
 	glPushMatrix();
 
-	// move to this joint's position relative to its parent
+	// move to the joint's offset from its parent
 	glTranslatef(joint.joint_offset[0], joint.joint_offset[1], joint.joint_offset[2]);
 
-	// (Task Ib will add the joint's animated rotation here)
+	// (Task Ib will apply the animation rotation here)
 
-	// draw a bone to each child joint, then recurse down the hierarchy
+	// draw a bone to each child, then recurse
 	for (int child = 0; child < (int) joint.Children.size(); child++)
 		{ // per child
 		DrawBone(Cartesian3(	joint.Children[child].joint_offset[0],
@@ -192,15 +192,15 @@ void SceneModel::RenderJoint(const Joint &joint)
 	glPopMatrix();
 	} // RenderJoint()
 
-// routine to render a single bone as a cylinder from the origin to the given offset
+// draw one bone as a cylinder from the origin to the given offset
 void SceneModel::DrawBone(const Cartesian3 &offset)
 	{ // DrawBone()
-	// work out the length of the bone and ignore degenerate bones
+	// skip degenerate bones
 	float length = offset.length();
 	if (length < 1e-6f)
 		return;
 
-	// create the quadric used for the cylinders the first time we draw a bone
+	// create the quadric on first use
 	if (boneQuadric == NULL)
 		{ // create quadric
 		boneQuadric = gluNewQuadric();
@@ -208,7 +208,7 @@ void SceneModel::DrawBone(const Cartesian3 &offset)
 		gluQuadricNormals(boneQuadric, GLU_SMOOTH);
 		} // create quadric
 
-	// a cylinder is generated along the +z axis, so work out the rotation that aligns it with the bone
+	// rotate the cylinder's +z axis onto the bone direction
 	Cartesian3 direction = offset / length;
 	Cartesian3 axis = Cartesian3(0.0f, 0.0f, 1.0f).cross(direction);
 	float sinAngle = axis.length();
@@ -216,18 +216,18 @@ void SceneModel::DrawBone(const Cartesian3 &offset)
 
 	glPushMatrix();
 	if (sinAngle < 1e-6f)
-		{ // bone is parallel to the z axis
-		// if it points backwards, flip the cylinder over, otherwise leave it alone
+		{ // parallel to the z axis
+		// flip if the bone points backwards
 		if (cosAngle < 0.0f)
 			glRotatef(180.0f, 1.0f, 0.0f, 0.0f);
-		} // bone is parallel to the z axis
+		} // parallel to the z axis
 	else
 		{ // general case
 		float angle = atan2(sinAngle, cosAngle) * 180.0f / M_PI;
 		glRotatef(angle, axis.x, axis.y, axis.z);
 		} // general case
 
-	// draw the shaft of the bone
+	// draw the bone
 	gluCylinder(boneQuadric, boneRadius, boneRadius, length, 8, 1);
 
 	glPopMatrix();
