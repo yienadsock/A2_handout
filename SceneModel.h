@@ -73,6 +73,9 @@ class SceneModel
 
 	// set while the ball overlaps the character's collision sphere
 	bool ballTouchingCharacter;
+
+	// number of times the ball has hit the character
+	int characterHitCount;
 	
 	// constructor
 	SceneModel();

@@ -140,7 +140,10 @@ void SceneModel::Update()
 	Cartesian3 characterCentre(characterPosition.x, characterPosition.y, characterPosition.z + 0.5f * characterHeight);
 	bool ballTouching = (ballPosition - characterCentre).length() < ballRadius + characterRadius;
 	if (ballTouching && !ballTouchingCharacter)
-		std::cout << "Ball hit the character!" << std::endl;
+		{ // new hit
+		characterHitCount++;
+		std::cout << "Ball hit the character! hits: " << characterHitCount << std::endl;
+		} // new hit
 	ballTouchingCharacter = ballTouching;
 	} // Update()
 
@@ -360,6 +363,7 @@ void SceneModel::ResetPhysics()
 
 	// clear the collision state
 	ballTouchingCharacter = false;
+	characterHitCount = 0;
 	} // ResetPhysics()
 	
 // routine to switch between flat land and rolling land
