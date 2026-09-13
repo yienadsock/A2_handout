@@ -119,14 +119,42 @@ void SceneModel::Update()
 
 	ballVelocity.z -= gravity * frameTime;
 	ballPosition = ballPosition + ballVelocity * frameTime;
-	float groundHeight = activeLandModel->getHeight(ballPosition.x, ballPosition.y);
-	if (ballPosition.z - groundHeight < ballRadius)
+
+	if (dodecahedronActive)
 		{
-		ballPosition.z = groundHeight + ballRadius;
-		Cartesian3 normal = activeLandModel->getNormal(ballPosition.x, ballPosition.y);
-		float vn = ballVelocity.dot(normal);
-		if (vn < 0.0f)
-			ballVelocity = ballVelocity - normal * ((1.0f + elasticity) * vn);
+		int contactVertex = -1;
+		float deepest = 0.0f;
+		Cartesian3 contactNormal;
+		for (int vertex = 0; vertex < (int) dodecahedronModel.vertices.size(); vertex++)
+			{
+			Cartesian3 point = ballPosition + dodecahedronModel.vertices[vertex];
+			float penetration = activeLandModel->getHeight(point.x, point.y) - point.z;
+			if (penetration > deepest)
+				{
+				deepest = penetration;
+				contactVertex = vertex;
+				contactNormal = activeLandModel->getNormal(point.x, point.y);
+				}
+			}
+		if (contactVertex >= 0)
+			{
+			ballPosition.z += deepest;
+			float vn = ballVelocity.dot(contactNormal);
+			if (vn < 0.0f)
+				ballVelocity = ballVelocity - contactNormal * ((1.0f + elasticity) * vn);
+			}
+		}
+	else
+		{
+		float groundHeight = activeLandModel->getHeight(ballPosition.x, ballPosition.y);
+		if (ballPosition.z - groundHeight < ballRadius)
+			{
+			ballPosition.z = groundHeight + ballRadius;
+			Cartesian3 normal = activeLandModel->getNormal(ballPosition.x, ballPosition.y);
+			float vn = ballVelocity.dot(normal);
+			if (vn < 0.0f)
+				ballVelocity = ballVelocity - normal * ((1.0f + elasticity) * vn);
+			}
 		}
 
 	Cartesian3 characterCentre(characterPosition.x, characterPosition.y, characterPosition.z + 0.5f * characterHeight);
