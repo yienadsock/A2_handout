@@ -118,8 +118,10 @@ void SceneModel::Update()
 	if (ballPosition.z - groundHeight < ballRadius)
 		{
 		ballPosition.z = groundHeight + ballRadius;
-		if (ballVelocity.z < 0.0f)
-			ballVelocity.z = -ballVelocity.z * elasticity;
+		Cartesian3 normal = activeLandModel->getNormal(ballPosition.x, ballPosition.y);
+		float vn = ballVelocity.dot(normal);
+		if (vn < 0.0f)
+			ballVelocity = ballVelocity - normal * ((1.0f + elasticity) * vn);
 		}
 
 	Cartesian3 characterCentre(characterPosition.x, characterPosition.y, characterPosition.z + 0.5f * characterHeight);
