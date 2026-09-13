@@ -65,6 +65,9 @@ class SceneModel
 	Cartesian3 ballPosition;
 	Cartesian3 ballVelocity;
 
+	IndexedFaceSurface dodecahedronModel;
+	bool dodecahedronActive;
+
 	bool ballTouchingCharacter;
 
 	int characterHitCount;

@@ -66,6 +66,9 @@ SceneModel::SceneModel()
 	if (!ballModel.ReadFileIndexedFace(sphereModelName))
 		std::cout << "Failed to load " << sphereModelName << std::endl;
 
+	if (!dodecahedronModel.ReadFileIndexedFace(dodecahedronModelName))
+		std::cout << "Failed to load " << dodecahedronModelName << std::endl;
+
 	if (!standPose.ReadFileBVH(motionBvhStand))
 		std::cout << "Failed to load " << motionBvhStand << std::endl;
 	if (!runCycle.ReadFileBVH(motionBvhRun))
@@ -92,6 +95,8 @@ SceneModel::SceneModel()
 	runningTarget = false;
 	blendWeight = 0.0f;
 	blendedPose.resize(standPose.boneRotations[0].size());
+
+	dodecahedronActive = false;
 
 	boneQuadric = NULL;
 
@@ -194,7 +199,10 @@ void SceneModel::RenderBall()
 
 	glPushMatrix();
 	glTranslatef(ballPosition.x, ballPosition.y, ballPosition.z);
-	ballModel.Render();
+	if (dodecahedronActive)
+		dodecahedronModel.Render();
+	else
+		ballModel.Render();
 	glPopMatrix();
 	}
 
@@ -341,6 +349,8 @@ void SceneModel::SwitchLand()
 // routine to switch between sphere and dodecahedron
 void SceneModel::SwitchModel()
 	{ // SwitchModel()
+	dodecahedronActive = !dodecahedronActive;
+
 	// and reset the physics
 	ResetPhysics();
 	} // SwitchModel()
