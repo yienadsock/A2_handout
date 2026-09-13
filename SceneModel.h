@@ -67,6 +67,8 @@ class SceneModel
 
 	IndexedFaceSurface dodecahedronModel;
 	bool dodecahedronActive;
+	Cartesian3 angularVelocity;
+	Quaternion orientation;
 
 	bool ballTouchingCharacter;
 

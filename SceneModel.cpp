@@ -43,6 +43,9 @@ const float gravity		= 9.8f;
 const float elasticity	= 0.6f;
 const float ballRadius	= 1.0f;
 
+const float dodecahedronInertia	= 0.4f;
+const float restingSpeed		= 0.5f;
+
 const float characterHeight	= 1.8f;
 const float characterRadius	= 0.3f;
 
@@ -125,24 +128,39 @@ void SceneModel::Update()
 		int contactVertex = -1;
 		float deepest = 0.0f;
 		Cartesian3 contactNormal;
+		Cartesian3 contactOffset;
 		for (int vertex = 0; vertex < (int) dodecahedronModel.vertices.size(); vertex++)
 			{
-			Cartesian3 point = ballPosition + dodecahedronModel.vertices[vertex];
+			Cartesian3 offset = orientation.Conjugate().Act(dodecahedronModel.vertices[vertex]);
+			Cartesian3 point = ballPosition + offset;
 			float penetration = activeLandModel->getHeight(point.x, point.y) - point.z;
 			if (penetration > deepest)
 				{
 				deepest = penetration;
 				contactVertex = vertex;
+				contactOffset = offset;
 				contactNormal = activeLandModel->getNormal(point.x, point.y);
 				}
 			}
 		if (contactVertex >= 0)
 			{
 			ballPosition.z += deepest;
-			float vn = ballVelocity.dot(contactNormal);
+			Cartesian3 contactVelocity = ballVelocity + angularVelocity.cross(contactOffset);
+			float vn = contactVelocity.dot(contactNormal);
 			if (vn < 0.0f)
-				ballVelocity = ballVelocity - contactNormal * ((1.0f + elasticity) * vn);
+				{
+				float restitution = elasticity;
+				if (vn > -restingSpeed)
+					restitution = 0.0f;
+				Cartesian3 lever = contactOffset.cross(contactNormal);
+				float impulse = -(1.0f + restitution) * vn / (1.0f + lever.dot(lever) / dodecahedronInertia);
+				ballVelocity = ballVelocity + contactNormal * impulse;
+				angularVelocity = angularVelocity + lever * (impulse / dodecahedronInertia);
+				}
 			}
+
+		Quaternion spin(angularVelocity.x, angularVelocity.y, angularVelocity.z, 0.0f);
+		orientation = (orientation + (spin * orientation) * (0.5f * frameTime)).Unit();
 		}
 	else
 		{
@@ -228,7 +246,11 @@ void SceneModel::RenderBall()
 	glPushMatrix();
 	glTranslatef(ballPosition.x, ballPosition.y, ballPosition.z);
 	if (dodecahedronActive)
+		{
+		columnMajorMatrix orientationMatrix = orientation.GetMatrix().columnMajor();
+		glMultMatrixf(orientationMatrix.coordinates);
 		dodecahedronModel.Render();
+		}
 	else
 		ballModel.Render();
 	glPopMatrix();
@@ -357,6 +379,9 @@ void SceneModel::ResetPhysics()
 
 	ballPosition = Cartesian3(0.0, 0.0, 10.0);
 	ballVelocity = Cartesian3(0.0, 0.0, 0.0);
+
+	angularVelocity = Cartesian3(0.0, 0.0, 0.0);
+	orientation = Quaternion();
 
 	ballTouchingCharacter = false;
 	characterHitCount = 0;
