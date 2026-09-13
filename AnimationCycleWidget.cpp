@@ -99,7 +99,7 @@ void AnimationCycleWidget::keyPressEvent(QKeyEvent *event)
 		case Qt::Key_Space:
 			if (event->isAutoRepeat())
 				break;
-			theScene->ToggleRunning();
+			theScene->ToggleRunning(); // toggle running / standing
 			break;
 		case Qt::Key_L:
 			theScene->SwitchLand();

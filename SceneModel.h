@@ -108,14 +108,11 @@ class SceneModel
 	void RotateLaunchRight();
 
 	void RenderCharacter();
-
 	void RenderBall();
 
 	private:
 	void RenderJoint(const Joint &joint, const std::vector<Cartesian3> &rotations);
-
 	void DrawBone(const Cartesian3 &offset);
-
 	GLUquadric *boneQuadric;
 	}; // class SceneModel
 

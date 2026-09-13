@@ -32,20 +32,20 @@ const float cameraSpeed = 5.0;
 
 // this is 60 fps nominal speed
 const float frameTime = 0.0166667;	
-
+// character config
 const float characterScale	= 0.01f;
 const float characterYaw	= 90.0f;
 const float characterSpeed	= 4.0f;
 const float blendDuration	= 0.5f;
 const float boneRadius		= 2.0f;
-
+// ball config
 const float gravity		= 9.8f;
 const float elasticity	= 0.6f;
 const float ballRadius	= 1.0f;
-
+// dodecahedron config
 const float dodecahedronInertia	= 0.4f;
 const float restingSpeed		= 0.5f;
-
+// character collision config
 const float characterHeight	= 1.8f;
 const float characterRadius	= 0.3f;
 
@@ -65,18 +65,18 @@ SceneModel::SceneModel()
     flatLandModel.ReadFileTerrainData(flatLandModelName, 3);
     stripeLandModel.ReadFileTerrainData(stripeLandModelName, 3);
     rollingLandModel.ReadFileTerrainData(rollingLandModelName, 3);
-
+	
+	// load the ball and dodecahedron models from files
 	if (!ballModel.ReadFileIndexedFace(sphereModelName))
 		std::cout << "Failed to load " << sphereModelName << std::endl;
 
 	if (!dodecahedronModel.ReadFileIndexedFace(dodecahedronModelName))
 		std::cout << "Failed to load " << dodecahedronModelName << std::endl;
-
+	// load animation data from bvh and report
 	if (!standPose.ReadFileBVH(motionBvhStand))
 		std::cout << "Failed to load " << motionBvhStand << std::endl;
 	if (!runCycle.ReadFileBVH(motionBvhRun))
 		std::cout << "Failed to load " << motionBvhRun << std::endl;
-
 	std::cout << "Loaded " << motionBvhStand << ": "
 		<< standPose.all_joints.size() << " joints, "
 		<< standPose.frame_count << " frames" << std::endl;
@@ -93,15 +93,16 @@ SceneModel::SceneModel()
 	// and set the frame number to 0
 	frameNumber = 0;
 		
-	animationTime = 0.0f;
+	animationTime = 0.0f; // set the initial animation time
 
-	runningTarget = false;
+	runningTarget = false; // set the initial state, start with standing
+	// blend initialisation
 	blendWeight = 0.0f;
 	blendedPose.resize(standPose.boneRotations[0].size());
 
-	dodecahedronActive = false;
+	dodecahedronActive = false; // model state
 
-	boneQuadric = NULL;
+	boneQuadric = NULL; // first render bone quadric initialisation
 
 	// call the reset routine to initialise the ball position
 	ResetPhysics();
@@ -110,30 +111,31 @@ SceneModel::SceneModel()
 // routine that updates the scene for the next frame
 void SceneModel::Update()
 	{ // Update()
-	animationTime += frameTime;
-
+	animationTime += frameTime; // increment the animation time by the frame time
+	// blend the pose between standing and running
 	blendWeight += (runningTarget ? frameTime : -frameTime) / blendDuration;
 	if (blendWeight < 0.0f) blendWeight = 0.0f;
 	if (blendWeight > 1.0f) blendWeight = 1.0f;
-
+	// run forward
 	characterPosition.x += characterSpeed * blendWeight * frameTime;
-
+	// update the character's z position to match the terrain height
 	characterPosition.z = activeLandModel->getHeight(characterPosition.x, characterPosition.y);
-
+	// ball physics update
 	ballVelocity.z -= gravity * frameTime;
 	ballPosition = ballPosition + ballVelocity * frameTime;
 
 	if (dodecahedronActive)
-		{
-		int contactVertex = -1;
-		float deepest = 0.0f;
-		Cartesian3 contactNormal;
+		{ // dodecahedron collision detection and response
+		int contactVertex = -1; 
+		float deepest = 0.0f; 
+		Cartesian3 contactNormal; // initialise the normal and offset of the point where dodecahedron hit
 		Cartesian3 contactOffset;
 		for (int vertex = 0; vertex < (int) dodecahedronModel.vertices.size(); vertex++)
-			{
-			Cartesian3 offset = orientation.Conjugate().Act(dodecahedronModel.vertices[vertex]);
+			{// update the position of each vertex in world space and check for collision with the terrain
+			Cartesian3 offset = orientation.Conjugate().Act(dodecahedronModel.vertices[vertex]); // for not getting infinite rotation
 			Cartesian3 point = ballPosition + offset;
-			float penetration = activeLandModel->getHeight(point.x, point.y) - point.z;
+			float penetration = activeLandModel->getHeight(point.x, point.y) - point.z; // when terrain height is higher than the vertex: get penetrated
+			// when hit terrain, get the deepest penetration point and its normal and offset
 			if (penetration > deepest)
 				{
 				deepest = penetration;
@@ -143,28 +145,28 @@ void SceneModel::Update()
 				}
 			}
 		if (contactVertex >= 0)
-			{
-			ballPosition.z += deepest;
-			Cartesian3 contactVelocity = ballVelocity + angularVelocity.cross(contactOffset);
-			float vn = contactVelocity.dot(contactNormal);
-			if (vn < 0.0f)
+			{// check for collision and respond
+			ballPosition.z += deepest; // adjust the ball position to be on the terrain surface
+			Cartesian3 contactVelocity = ballVelocity + angularVelocity.cross(contactOffset); // compute the velocity at the contact point
+			float vn = contactVelocity.dot(contactNormal); // direction of the contact point velocity
+			if (vn < 0.0f) // apply impulse as the contact point is moving into the terrain
 				{
-				float restitution = elasticity;
-				if (vn > -restingSpeed)
+				float restitution = elasticity; // if the contact point is moving into the terrain, apply restitution
+				if (vn > -restingSpeed) // if the contact point is moving slowly, apply no restitution
 					restitution = 0.0f;
-				Cartesian3 lever = contactOffset.cross(contactNormal);
-				float impulse = -(1.0f + restitution) * vn / (1.0f + lever.dot(lever) / dodecahedronInertia);
+				Cartesian3 lever = contactOffset.cross(contactNormal); // compute the lever arm for the impulse
+				float impulse = -(1.0f + restitution) * vn / (1.0f + lever.dot(lever) / dodecahedronInertia); // overall impulse magnitude
 				ballVelocity = ballVelocity + contactNormal * impulse;
 				angularVelocity = angularVelocity + lever * (impulse / dodecahedronInertia);
 				}
 			}
-
+		// rotate the dodecahedron
 		Quaternion spin(angularVelocity.x, angularVelocity.y, angularVelocity.z, 0.0f);
 		orientation = (orientation + (spin * orientation) * (0.5f * frameTime)).Unit();
 		}
 	else
-		{
-		float groundHeight = activeLandModel->getHeight(ballPosition.x, ballPosition.y);
+		{ // sphere collision detection and response
+		float groundHeight = activeLandModel->getHeight(ballPosition.x, ballPosition.y); 
 		if (ballPosition.z - groundHeight < ballRadius)
 			{
 			ballPosition.z = groundHeight + ballRadius;
@@ -174,7 +176,7 @@ void SceneModel::Update()
 				ballVelocity = ballVelocity - normal * ((1.0f + elasticity) * vn);
 			}
 		}
-
+	// check for collision with the character
 	Cartesian3 characterCentre(characterPosition.x, characterPosition.y, characterPosition.z + 0.5f * characterHeight);
 	bool ballTouching = (ballPosition - characterCentre).length() < ballRadius + characterRadius;
 	if (ballTouching && !ballTouchingCharacter)
@@ -229,9 +231,8 @@ void SceneModel::Render()
 
 	// render the terrain
     activeLandModel->Render();
-
+	// render the ball and character
 	RenderBall();
-
 	RenderCharacter();
 
     } // Render()
@@ -242,10 +243,10 @@ void SceneModel::RenderBall()
 	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, ballColour);
 	glMaterialfv(GL_FRONT, GL_SPECULAR, blackColour);
 	glMaterialfv(GL_FRONT, GL_EMISSION, blackColour);
-
+	// set ball position
 	glPushMatrix();
 	glTranslatef(ballPosition.x, ballPosition.y, ballPosition.z);
-	if (dodecahedronActive)
+	if (dodecahedronActive) // render dodecahedron when active
 		{
 		columnMajorMatrix orientationMatrix = orientation.GetMatrix().columnMajor();
 		glMultMatrixf(orientationMatrix.coordinates);
@@ -258,31 +259,28 @@ void SceneModel::RenderBall()
 
 void SceneModel::RenderCharacter()
 	{
+	// set character's material
 	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, characterColour);
 	glMaterialfv(GL_FRONT, GL_SPECULAR, blackColour);
 	glMaterialfv(GL_FRONT, GL_EMISSION, blackColour);
-
-	glPushMatrix();
-
+	// set character position
+	glPushMatrix(); // skeleton to world space
 	glTranslatef(characterPosition.x, characterPosition.y, characterPosition.z);
-
-	glRotatef(characterYaw, 0.0f, 0.0f, 1.0f);
-
+	glRotatef(characterYaw, 0.0f, 0.0f, 1.0f); // face to right
 	glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
-
-	glScalef(characterScale, characterScale, characterScale);
-
+	glScalef(characterScale, characterScale, characterScale); // set unit
+	// render the character's pose frame
 	if (!runCycle.boneRotations.empty() && runCycle.frame_time > 0.0f)
 		{
-		size_t frame = ((size_t) (animationTime / runCycle.frame_time)) % runCycle.boneRotations.size();
+		size_t frame = ((size_t) (animationTime / runCycle.frame_time)) % runCycle.boneRotations.size(); // 
 		const std::vector<Cartesian3> &runPose = runCycle.boneRotations[frame];
-
+		// draw stand and run with blending
 		if (blendWeight <= 0.0f)
 			RenderJoint(runCycle.root, standPose.boneRotations[0]);
 		else if (blendWeight >= 1.0f)
 			RenderJoint(runCycle.root, runPose);
 		else
-			{
+			{ // blend
 			const std::vector<Cartesian3> &restPose = standPose.boneRotations[0];
 			for (size_t joint = 0; joint < runPose.size(); joint++)
 				blendedPose[joint] = restPose[joint] + (runPose[joint] - restPose[joint]) * blendWeight;
@@ -294,16 +292,15 @@ void SceneModel::RenderCharacter()
 	}
 
 void SceneModel::RenderJoint(const Joint &joint, const std::vector<Cartesian3> &rotations)
-	{
+	{ // draw hierarchy recursively
 	glPushMatrix();
-
-	glTranslatef(joint.joint_offset[0], joint.joint_offset[1], joint.joint_offset[2]);
-
+	glTranslatef(joint.joint_offset[0], joint.joint_offset[1], joint.joint_offset[2]); // move to the joint's offset from parent
+	// apply the joint's rotation
 	const Cartesian3 &angles = rotations[joint.id];
 	glRotatef(angles.x, 1.0f, 0.0f, 0.0f);
 	glRotatef(angles.y, 0.0f, 1.0f, 0.0f);
 	glRotatef(angles.z, 0.0f, 0.0f, 1.0f);
-
+	// draw the bones to the children
 	for (int child = 0; child < (int) joint.Children.size(); child++)
 		{
 		DrawBone(Cartesian3(	joint.Children[child].joint_offset[0],
@@ -317,22 +314,22 @@ void SceneModel::RenderJoint(const Joint &joint, const std::vector<Cartesian3> &
 
 void SceneModel::DrawBone(const Cartesian3 &offset)
 	{
-	float length = offset.length();
+	float length = offset.length(); // skip bad bones
 	if (length < 1e-6f)
 		return;
-
+	
 	if (boneQuadric == NULL)
-		{
+		{ // initialize the quadric for drawing bones
 		boneQuadric = gluNewQuadric();
 		gluQuadricDrawStyle(boneQuadric, GLU_FILL);
 		gluQuadricNormals(boneQuadric, GLU_SMOOTH);
 		}
-
+	// rotate the cylinder's z-axis to align with the bone direction
 	Cartesian3 direction = offset / length;
 	Cartesian3 axis = Cartesian3(0.0f, 0.0f, 1.0f).cross(direction);
 	float sinAngle = axis.length();
 	float cosAngle = direction.z;
-
+	// set the bone's position and orientation
 	glPushMatrix();
 	if (sinAngle < 1e-6f)
 		{
@@ -344,7 +341,7 @@ void SceneModel::DrawBone(const Cartesian3 &offset)
 		float angle = atan2(sinAngle, cosAngle) * 180.0f / M_PI;
 		glRotatef(angle, axis.x, axis.y, axis.z);
 		}
-
+	// draw the cylinder for the bone
 	gluCylinder(boneQuadric, boneRadius, boneRadius, length, 8, 1);
 
 	glPopMatrix();
