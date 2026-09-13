@@ -70,6 +70,9 @@ class SceneModel
 	IndexedFaceSurface ballModel;
 	Cartesian3 ballPosition;
 	Cartesian3 ballVelocity;
+
+	// set while the ball overlaps the character's collision sphere
+	bool ballTouchingCharacter;
 	
 	// constructor
 	SceneModel();

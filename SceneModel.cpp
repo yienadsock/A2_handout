@@ -45,6 +45,10 @@ const float gravity		= 9.8f;		// m/s^2
 const float elasticity	= 0.6f;		// bounce restitution
 const float ballRadius	= 1.0f;		// world units (metres)
 
+// character collision sphere (1.8 m tall, 0.3 m radius)
+const float characterHeight	= 1.8f;	// m
+const float characterRadius	= 0.3f;	// m
+
 const Homogeneous4 sunDirection(0.5, -0.5, 0.3, 0.0);
 const GLfloat groundColour[4] = { 0.2, 0.5, 0.2, 1.0 };
 const GLfloat ballColour[4] = { 0.6, 0.6, 0.6, 1.0 };
@@ -131,6 +135,13 @@ void SceneModel::Update()
 		if (ballVelocity.z < 0.0f)
 			ballVelocity.z = -ballVelocity.z * elasticity;
 		} // bounces off the ground
+
+	// did the ball hit the character? (character treated as a sphere)
+	Cartesian3 characterCentre(characterPosition.x, characterPosition.y, characterPosition.z + 0.5f * characterHeight);
+	bool ballTouching = (ballPosition - characterCentre).length() < ballRadius + characterRadius;
+	if (ballTouching && !ballTouchingCharacter)
+		std::cout << "Ball hit the character!" << std::endl;
+	ballTouchingCharacter = ballTouching;
 	} // Update()
 
 // routine to tell the scene to render itself
@@ -346,6 +357,9 @@ void SceneModel::ResetPhysics()
 	// drop the ball from 10 m
 	ballPosition = Cartesian3(0.0, 0.0, 10.0);
 	ballVelocity = Cartesian3(0.0, 0.0, 0.0);
+
+	// clear the collision state
+	ballTouchingCharacter = false;
 	} // ResetPhysics()
 	
 // routine to switch between flat land and rolling land
