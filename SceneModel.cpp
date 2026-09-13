@@ -33,21 +33,18 @@ const float cameraSpeed = 5.0;
 // this is 60 fps nominal speed
 const float frameTime = 0.0166667;	
 
-// character configuration
-const float characterScale	= 0.01f;	// skeletal units (cm) to world metres
-const float characterYaw	= 90.0f;	// the character faces screen-right
-const float characterSpeed	= 4.0f;		// forward run speed (m/s)
-const float blendDuration	= 0.5f;		// rest <-> run blend time (seconds)
-const float boneRadius		= 2.0f;		// bone cylinder radius, in skeletal units
+const float characterScale	= 0.01f;
+const float characterYaw	= 90.0f;
+const float characterSpeed	= 4.0f;
+const float blendDuration	= 0.5f;
+const float boneRadius		= 2.0f;
 
-// ball physics
-const float gravity		= 9.8f;		// m/s^2
-const float elasticity	= 0.6f;		// bounce restitution
-const float ballRadius	= 1.0f;		// world units (metres)
+const float gravity		= 9.8f;
+const float elasticity	= 0.6f;
+const float ballRadius	= 1.0f;
 
-// character collision sphere (1.8 m tall, 0.3 m radius)
-const float characterHeight	= 1.8f;	// m
-const float characterRadius	= 0.3f;	// m
+const float characterHeight	= 1.8f;
+const float characterRadius	= 0.3f;
 
 const Homogeneous4 sunDirection(0.5, -0.5, 0.3, 0.0);
 const GLfloat groundColour[4] = { 0.2, 0.5, 0.2, 1.0 };
@@ -66,17 +63,14 @@ SceneModel::SceneModel()
     stripeLandModel.ReadFileTerrainData(stripeLandModelName, 3);
     rollingLandModel.ReadFileTerrainData(rollingLandModelName, 3);
 
-	// load the ball model
 	if (!ballModel.ReadFileIndexedFace(sphereModelName))
 		std::cout << "Failed to load " << sphereModelName << std::endl;
 
-	// load the character's animation data
 	if (!standPose.ReadFileBVH(motionBvhStand))
 		std::cout << "Failed to load " << motionBvhStand << std::endl;
 	if (!runCycle.ReadFileBVH(motionBvhRun))
 		std::cout << "Failed to load " << motionBvhRun << std::endl;
 
-	// report what was loaded
 	std::cout << "Loaded " << motionBvhStand << ": "
 		<< standPose.all_joints.size() << " joints, "
 		<< standPose.frame_count << " frames" << std::endl;
@@ -93,15 +87,12 @@ SceneModel::SceneModel()
 	// and set the frame number to 0
 	frameNumber = 0;
 		
-	// start the animation clock
 	animationTime = 0.0f;
 
-	// start in the rest pose
 	runningTarget = false;
 	blendWeight = 0.0f;
 	blendedPose.resize(standPose.boneRotations[0].size());
 
-	// the bone quadric is created on the first render
 	boneQuadric = NULL;
 
 	// call the reset routine to initialise the ball position
@@ -111,39 +102,33 @@ SceneModel::SceneModel()
 // routine that updates the scene for the next frame
 void SceneModel::Update()
 	{ // Update()
-	// advance the animation clock
 	animationTime += frameTime;
 
-	// blend between rest & run
 	blendWeight += (runningTarget ? frameTime : -frameTime) / blendDuration;
 	if (blendWeight < 0.0f) blendWeight = 0.0f;
 	if (blendWeight > 1.0f) blendWeight = 1.0f;
 
-	// run forward (the character faces +x), eased by the blend
 	characterPosition.x += characterSpeed * blendWeight * frameTime;
 
-	// follow the terrain height
 	characterPosition.z = activeLandModel->getHeight(characterPosition.x, characterPosition.y);
 
-	// ball: gravity & terrain collision
 	ballVelocity.z -= gravity * frameTime;
 	ballPosition = ballPosition + ballVelocity * frameTime;
 	float groundHeight = activeLandModel->getHeight(ballPosition.x, ballPosition.y);
 	if (ballPosition.z - groundHeight < ballRadius)
-		{ // bounces off the ground
+		{
 		ballPosition.z = groundHeight + ballRadius;
 		if (ballVelocity.z < 0.0f)
 			ballVelocity.z = -ballVelocity.z * elasticity;
-		} // bounces off the ground
+		}
 
-	// did the ball hit the character? (character treated as a sphere)
 	Cartesian3 characterCentre(characterPosition.x, characterPosition.y, characterPosition.z + 0.5f * characterHeight);
 	bool ballTouching = (ballPosition - characterCentre).length() < ballRadius + characterRadius;
 	if (ballTouching && !ballTouchingCharacter)
-		{ // new hit
+		{
 		characterHitCount++;
 		std::cout << "Ball hit the character! hits: " << characterHitCount << std::endl;
-		} // new hit
+		}
 	ballTouchingCharacter = ballTouching;
 	} // Update()
 
@@ -192,119 +177,97 @@ void SceneModel::Render()
 	// render the terrain
     activeLandModel->Render();
 
-	// render the ball
 	RenderBall();
 
-	// render the character
 	RenderCharacter();
 
     } // Render()
 
-// render the ball
 void SceneModel::RenderBall()
-	{ 
+	{
 	//ball's material
 	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, ballColour);
 	glMaterialfv(GL_FRONT, GL_SPECULAR, blackColour);
 	glMaterialfv(GL_FRONT, GL_EMISSION, blackColour);
 
-	// move the model to the ball's position
 	glPushMatrix();
 	glTranslatef(ballPosition.x, ballPosition.y, ballPosition.z);
 	ballModel.Render();
 	glPopMatrix();
-	} 
+	}
 
-// render the character's skeleton
 void SceneModel::RenderCharacter()
-	{ // RenderCharacter()
-	// set the character's material
+	{
 	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, characterColour);
 	glMaterialfv(GL_FRONT, GL_SPECULAR, blackColour);
 	glMaterialfv(GL_FRONT, GL_EMISSION, blackColour);
 
-	// transform skeletal space into world space
 	glPushMatrix();
 
-	// world position
 	glTranslatef(characterPosition.x, characterPosition.y, characterPosition.z);
 
-	// face screen-right
 	glRotatef(characterYaw, 0.0f, 0.0f, 1.0f);
 
-	// BVH is y-up, world is z-up
 	glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
 
-	// skeletal units to metres
 	glScalef(characterScale, characterScale, characterScale);
 
-	// current frame of the run cycle
 	if (!runCycle.boneRotations.empty() && runCycle.frame_time > 0.0f)
-		{ // has animation data
+		{
 		size_t frame = ((size_t) (animationTime / runCycle.frame_time)) % runCycle.boneRotations.size();
 		const std::vector<Cartesian3> &runPose = runCycle.boneRotations[frame];
 
-		// draw the rest pose, the run pose, or a blend of the two
 		if (blendWeight <= 0.0f)
 			RenderJoint(runCycle.root, standPose.boneRotations[0]);
 		else if (blendWeight >= 1.0f)
 			RenderJoint(runCycle.root, runPose);
 		else
-			{ // blend the poses
+			{
 			const std::vector<Cartesian3> &restPose = standPose.boneRotations[0];
 			for (size_t joint = 0; joint < runPose.size(); joint++)
 				blendedPose[joint] = restPose[joint] + (runPose[joint] - restPose[joint]) * blendWeight;
 			RenderJoint(runCycle.root, blendedPose);
-			} // blend the poses
-		} // has animation data
+			}
+		}
 
 	glPopMatrix();
-	} // RenderCharacter()
+	}
 
-// recursively draw a joint and the bones to its children
 void SceneModel::RenderJoint(const Joint &joint, const std::vector<Cartesian3> &rotations)
-	{ // RenderJoint()
+	{
 	glPushMatrix();
 
-	// move to the joint's offset from its parent
 	glTranslatef(joint.joint_offset[0], joint.joint_offset[1], joint.joint_offset[2]);
 
-	// apply the joint's rotation
-	// (rotating X then Y then Z gives RX * RY * RZ, as pdf specifies)
 	const Cartesian3 &angles = rotations[joint.id];
 	glRotatef(angles.x, 1.0f, 0.0f, 0.0f);
 	glRotatef(angles.y, 0.0f, 1.0f, 0.0f);
 	glRotatef(angles.z, 0.0f, 0.0f, 1.0f);
 
-	// draw a bone to each child, then recurse
 	for (int child = 0; child < (int) joint.Children.size(); child++)
-		{ // per child
+		{
 		DrawBone(Cartesian3(	joint.Children[child].joint_offset[0],
 								joint.Children[child].joint_offset[1],
 								joint.Children[child].joint_offset[2]));
 		RenderJoint(joint.Children[child], rotations);
-		} // per child
+		}
 
 	glPopMatrix();
-	} // RenderJoint()
+	}
 
-// draw one bone as a cylinder from the origin to the given offset
 void SceneModel::DrawBone(const Cartesian3 &offset)
-	{ // DrawBone()
-	// skip degenerate bones
+	{
 	float length = offset.length();
 	if (length < 1e-6f)
 		return;
 
-	// create the quadric on first use
 	if (boneQuadric == NULL)
-		{ // create quadric
+		{
 		boneQuadric = gluNewQuadric();
 		gluQuadricDrawStyle(boneQuadric, GLU_FILL);
 		gluQuadricNormals(boneQuadric, GLU_SMOOTH);
-		} // create quadric
+		}
 
-	// rotate the cylinder's +z axis onto the bone direction
 	Cartesian3 direction = offset / length;
 	Cartesian3 axis = Cartesian3(0.0f, 0.0f, 1.0f).cross(direction);
 	float sinAngle = axis.length();
@@ -312,22 +275,20 @@ void SceneModel::DrawBone(const Cartesian3 &offset)
 
 	glPushMatrix();
 	if (sinAngle < 1e-6f)
-		{ // parallel to the z axis
-		// flip if the bone points backwards
+		{
 		if (cosAngle < 0.0f)
 			glRotatef(180.0f, 1.0f, 0.0f, 0.0f);
-		} // parallel to the z axis
+		}
 	else
-		{ // general case
+		{
 		float angle = atan2(sinAngle, cosAngle) * 180.0f / M_PI;
 		glRotatef(angle, axis.x, axis.y, axis.z);
-		} // general case
+		}
 
-	// draw the bone
 	gluCylinder(boneQuadric, boneRadius, boneRadius, length, 8, 1);
 
 	glPopMatrix();
-	} // DrawBone()
+	}
 
 // character control events: W for forward
 void SceneModel::EventCharacterForward()
@@ -341,11 +302,10 @@ void SceneModel::EventCharacterBackward()
 
     } // EventCharacterBackward()
 
-// start or stop the character running
 void SceneModel::ToggleRunning()
-	{ // ToggleRunning()
+	{
 	runningTarget = !runningTarget;
-	} // ToggleRunning()
+	}
 
 void SceneModel::ResetGame()
     { // ResetGame()
@@ -357,11 +317,9 @@ void SceneModel::ResetPhysics()
 	{ // ResetPhysics()
 	std::cout << "Resetting Physics." << std::endl;
 
-	// drop the ball from 10 m
 	ballPosition = Cartesian3(0.0, 0.0, 10.0);
 	ballVelocity = Cartesian3(0.0, 0.0, 0.0);
 
-	// clear the collision state
 	ballTouchingCharacter = false;
 	characterHitCount = 0;
 	} // ResetPhysics()

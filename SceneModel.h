@@ -49,32 +49,24 @@ class SceneModel
 	// the frame number for use in animating
 	unsigned long frameNumber;
 
-	// the character's animation clock (seconds)
 	float animationTime;
 
-	// start/stop request & blend between rest (0) and run (1)
 	bool runningTarget;
 	float blendWeight;
 
-	// store pose for blending rest & run
 	std::vector<Cartesian3> blendedPose;
 
-	// character animation data: rest pose & run cycle
 	BVHData standPose;
 	BVHData runCycle;
 
-	// character position in the world (z-up)
 	Cartesian3 characterPosition;
 
-	// the ball's surface model, position & velocity in the world (z-up)
 	IndexedFaceSurface ballModel;
 	Cartesian3 ballPosition;
 	Cartesian3 ballVelocity;
 
-	// set while the ball overlaps the character's collision sphere
 	bool ballTouchingCharacter;
 
-	// number of times the ball has hit the character
 	int characterHitCount;
 	
 	// constructor
@@ -90,7 +82,6 @@ class SceneModel
 	void EventCharacterForward();
 	void EventCharacterBackward();
 
-	// start or stop the character running
 	void ToggleRunning();
 	
 	// reset game
@@ -111,20 +102,15 @@ class SceneModel
 	// and to rotate to right
 	void RotateLaunchRight();
 
-	// render the character's skeleton
 	void RenderCharacter();
 
-	// render the ball
 	void RenderBall();
 
 	private:
-	// recursively draw a joint and its child bones in the given pose
 	void RenderJoint(const Joint &joint, const std::vector<Cartesian3> &rotations);
 
-	// draw one bone as a cylinder from the origin to the given offset
 	void DrawBone(const Cartesian3 &offset);
 
-	// quadric used for the bone cylinders (created on first render)
 	GLUquadric *boneQuadric;
 	}; // class SceneModel
 
