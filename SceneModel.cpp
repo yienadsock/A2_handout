@@ -36,6 +36,7 @@ const float frameTime = 0.0166667;
 const float characterScale	= 0.01f;
 const float characterYaw	= 90.0f;
 const float characterSpeed	= 4.0f;
+const float characterStep	= 0.25f;
 const float blendDuration	= 0.5f;
 const float boneRadius		= 2.0f;
 // ball config
@@ -350,13 +351,13 @@ void SceneModel::DrawBone(const Cartesian3 &offset)
 // character control events: W for forward
 void SceneModel::EventCharacterForward()
     { // EventCharacterForward()
-
+    characterPosition.x += characterStep;
     } // EventCharacterForward()
 
 // character control events: S for backward
 void SceneModel::EventCharacterBackward()
     { // EventCharacterBackward()
-
+    characterPosition.x -= characterStep;
     } // EventCharacterBackward()
 
 void SceneModel::ToggleRunning()
