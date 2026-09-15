@@ -351,13 +351,13 @@ void SceneModel::DrawBone(const Cartesian3 &offset)
 // character control events: W for forward
 void SceneModel::EventCharacterForward()
     { // EventCharacterForward()
-    characterPosition.x += characterStep;
+		characterPosition.x += characterStep;
     } // EventCharacterForward()
 
 // character control events: S for backward
 void SceneModel::EventCharacterBackward()
     { // EventCharacterBackward()
-    characterPosition.x -= characterStep;
+		characterPosition.x -= characterStep;
     } // EventCharacterBackward()
 
 void SceneModel::ToggleRunning()
